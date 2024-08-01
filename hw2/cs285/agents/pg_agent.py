@@ -75,12 +75,12 @@ class PGAgent(nn.Module):
 
         # step 3: use all datapoints (s_t, a_t, adv_t) to update the PG actor/policy
         # TODO: update the PG actor/policy network once using the advantages
-        info: dict = None
+        info: dict = self.actor.update(obs, actions, advantages)
 
         # step 4: if needed, use all datapoints (s_t, a_t, q_t) to update the PG critic/baseline
         if self.critic is not None:
             # TODO: perform `self.baseline_gradient_steps` updates to the critic/baseline network
-            critic_info: dict = None
+            critic_info: dict = self.critic.update(obs, q_values)
 
             info.update(critic_info)
 
@@ -95,14 +95,14 @@ class PGAgent(nn.Module):
             # In other words: Q(s_t, a_t) = sum_{t'=0}^T gamma^t' r_{t'}
             # TODO: use the helper function self._discounted_return to calculate the Q-values
 
-
-            q_values = self._discounted_return(rewards)
+            q_values = np.concatenate([self._discounted_return(r) for r in rewards])
         else:
             # Case 2: in reward-to-go PG, we only use the rewards after timestep t to estimate the Q-value for (s_t, a_t).
             # In other words: Q(s_t, a_t) = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
             # TODO: use the helper function self._discounted_reward_to_go to calculate the Q-values
 
-            q_values = self._discounted_reward_to_go(rewards)
+            q_values = np.concatenate([self._discounted_return(r) for r in rewards])
+            
 
         return q_values
 
@@ -122,7 +122,7 @@ class PGAgent(nn.Module):
             advantages = q_values   
         else:
             # TODO: run the critic and use it as a baseline
-            values = None
+            values = self.critic.forward(obs)
             assert values.shape == q_values.shape
 
             if self.gae_lambda is None:
@@ -160,15 +160,21 @@ class PGAgent(nn.Module):
         involve t)!
         """
 
-        dis_return = []
+        # dis_return = []
+        # for i in range(len(rewards)):
+        #     dr = 0
+        #     for j in range(len(rewards[i])):
+        #         dr += rewards[i][j] * self.gamma**j
+        #     dis_return.append(dr)
+
+        # print(dis_return)
+
+        dr = 0
         for i in range(len(rewards)):
-            dr = 0
-            for j in range(len(rewards[i])):
-                dr += rewards[i][j] * self.gamma**j
-            dis_return.append(dr)
+            dr += rewards[i] * self.gamma**i
+        dis_return = np.ones(len(rewards)) * dr
 
         print(dis_return)
-
         return dis_return
 
 
@@ -178,12 +184,12 @@ class PGAgent(nn.Module):
         in each index t' is sum_{t'=t}^T gamma^(t'-t) * r_{t'}.
         """
 
-        # dis_return = []
-        # for i in range(len(rewards)):
-        #     dr = 0
-        #     for j in range(len(rewards[i])):
-        #         dr += rewards[i][j] * self.gamma**j
-        #     dis_return.append(dr)
-
-        # return dis_return
-        return None
+        dis_re = []
+        for i in range(len(rewards)):
+            dr = 0
+            for j in range(i, len(rewards)):
+                dr += rewards[j]* self.gamma**(j-i)
+            dis_re.append(dr)
+        dis_return = np.array(dis_re)
+                
+        return dis_return
