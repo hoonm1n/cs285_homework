@@ -8,6 +8,7 @@ from cs285.infrastructure import pytorch_util as ptu
 from torch import nn
 
 
+
 class PGAgent(nn.Module):
     def __init__(
         self,
@@ -68,6 +69,21 @@ class PGAgent(nn.Module):
         # way. obs, actions, rewards, terminals, and q_values should all be arrays with a leading dimension of `batch_size`
         # beyond this point.
 
+        obs = np.concatenate([ob for ob in obs])
+        actions = np.concatenate([ac for ac in actions])
+        rewards = np.concatenate([r for r in rewards])
+        terminals = np.concatenate([te for te in terminals])
+        q_values = np.concatenate([q for q in q_values])
+
+
+        # print(type(q_values))
+        # print(type(obs))
+        # print(len(q_values))
+        # print(len(obs))
+        # print(len(actions))
+
+
+
         # step 2: calculate advantages from Q values
         advantages: np.ndarray = self._estimate_advantage(
             obs, rewards, q_values, terminals
@@ -88,21 +104,26 @@ class PGAgent(nn.Module):
 
     def _calculate_q_vals(self, rewards: Sequence[np.ndarray]) -> Sequence[np.ndarray]:
         """Monte Carlo estimation of the Q function."""
+        q_values = []
 
         if not self.use_reward_to_go:
             # Case 1: in trajectory-based PG, we ignore the timestep and instead use the discounted return for the entire
             # trajectory at each point.
             # In other words: Q(s_t, a_t) = sum_{t'=0}^T gamma^t' r_{t'}
             # TODO: use the helper function self._discounted_return to calculate the Q-values
+            for r in rewards:
+                q_values.append(self._discounted_return(r))
 
-            q_values = np.concatenate([self._discounted_return(r) for r in rewards])
+            
+            # q_values = np.concatenate([self._discounted_return(r) for r in rewards])
         else:
             # Case 2: in reward-to-go PG, we only use the rewards after timestep t to estimate the Q-value for (s_t, a_t).
             # In other words: Q(s_t, a_t) = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
             # TODO: use the helper function self._discounted_reward_to_go to calculate the Q-values
+            for r in rewards:
+                q_values.append(self._discounted_reward_to_go(r))
 
-            q_values = np.concatenate([self._discounted_return(r) for r in rewards])
-            
+            # q_values = np.concatenate([self._discounted_return(r) for r in rewards])
 
         return q_values
 
@@ -122,7 +143,7 @@ class PGAgent(nn.Module):
             advantages = q_values   
         else:
             # TODO: run the critic and use it as a baseline
-            values = self.critic.forward(obs)
+            values = self.critic(obs)
             assert values.shape == q_values.shape
 
             if self.gae_lambda is None:
@@ -174,7 +195,6 @@ class PGAgent(nn.Module):
             dr += rewards[i] * self.gamma**i
         dis_return = np.ones(len(rewards)) * dr
 
-        print(dis_return)
         return dis_return
 
 
