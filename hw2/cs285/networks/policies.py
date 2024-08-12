@@ -102,15 +102,11 @@ class MLPPolicyPG(MLPPolicy):
 
         # TODO: implement the policy gradient actor update.
 
-
+        log_pi = self.forward(obs).log_prob(actions)
+        loss = torch.neg(torch.mean(torch.mul(log_pi, advantages)))
 
 
         self.optimizer.zero_grad()
-
-
-
-        loss = None
-
         loss.backward()
         self.optimizer.step()
 

@@ -76,19 +76,10 @@ class PGAgent(nn.Module):
         q_values = np.concatenate([q for q in q_values])
 
 
-        # print(type(q_values))
-        # print(type(obs))
-        # print(len(q_values))
-        # print(len(obs))
-        # print(len(actions))
-
-
-
         # step 2: calculate advantages from Q values
         advantages: np.ndarray = self._estimate_advantage(
             obs, rewards, q_values, terminals
         )
-
         # step 3: use all datapoints (s_t, a_t, adv_t) to update the PG actor/policy
         # TODO: update the PG actor/policy network once using the advantages
         info: dict = self.actor.update(obs, actions, advantages)
@@ -140,11 +131,15 @@ class PGAgent(nn.Module):
         """
         if self.critic is None:
             # TODO: if no baseline, then what are the advantages?
+            print("critic is None")
             advantages = q_values   
         else:
             # TODO: run the critic and use it as a baseline
+            obs = ptu.from_numpy(obs)
             values = self.critic(obs)
-            assert values.shape == q_values.shape
+            values = ptu.to_numpy(values)
+
+            #assert values.shape == q_values.shape
 
             if self.gae_lambda is None:
                 # TODO: if using a baseline, but not GAE, what are the advantages?
@@ -161,6 +156,7 @@ class PGAgent(nn.Module):
                     # TODO: recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if the state is the last in its
                     # trajectory, and 0 otherwise.
+                    print("asdasdasd")
                     pass
 
                 # remove dummy advantage
