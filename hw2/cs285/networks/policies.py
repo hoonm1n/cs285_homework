@@ -59,6 +59,12 @@ class MLPPolicy(nn.Module):
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         """Takes a single observation (as a numpy array) and returns a single action (as a numpy array)."""
         # TODO: implement get_action
+        # if len(obs.shape) > 1:
+        #     observation = obs
+        # else:
+        #     observation = obs[None]
+
+
         dis = self.forward(ptu.from_numpy(obs))
         action = dis.sample()
         action = ptu.to_numpy(action)
@@ -102,11 +108,12 @@ class MLPPolicyPG(MLPPolicy):
 
         # TODO: implement the policy gradient actor update.
 
+        self.optimizer.zero_grad()
+
         log_pi = self.forward(obs).log_prob(actions)
         loss = torch.neg(torch.mean(torch.mul(log_pi, advantages)))
 
 
-        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 

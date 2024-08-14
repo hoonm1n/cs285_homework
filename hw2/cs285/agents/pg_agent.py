@@ -87,7 +87,9 @@ class PGAgent(nn.Module):
         # step 4: if needed, use all datapoints (s_t, a_t, q_t) to update the PG critic/baseline
         if self.critic is not None:
             # TODO: perform `self.baseline_gradient_steps` updates to the critic/baseline network
-            critic_info: dict = self.critic.update(obs, q_values)
+            critic_info: dict = {}
+            for _ in range(self.baseline_gradient_steps):
+                critic_info = self.critic.update(obs, q_values)
 
             info.update(critic_info)
 
@@ -132,14 +134,13 @@ class PGAgent(nn.Module):
         if self.critic is None:
             # TODO: if no baseline, then what are the advantages?
             print("critic is None")
-            advantages = q_values   
+            advantages = q_values.copy()   
         else:
             # TODO: run the critic and use it as a baseline
             obs = ptu.from_numpy(obs)
             values = self.critic(obs)
-            values = ptu.to_numpy(values)
-
-            #assert values.shape == q_values.shape
+            values = ptu.to_numpy(values).squeeze()
+            assert values.shape == q_values.shape
 
             if self.gae_lambda is None:
                 # TODO: if using a baseline, but not GAE, what are the advantages?
@@ -164,8 +165,9 @@ class PGAgent(nn.Module):
 
         # TODO: normalize the advantages to have a mean of zero and a standard deviation of one within the batch
         if self.normalize_advantages:
-            pass
-
+            eps = 1e-8
+            advantages = (advantages - np.mean(advantages)) / (np.std(advantages) + eps)
+    
         return advantages
 
     def _discounted_return(self, rewards: Sequence[float]) -> Sequence[float]:
@@ -177,19 +179,16 @@ class PGAgent(nn.Module):
         involve t)!
         """
 
-        # dis_return = []
-        # for i in range(len(rewards)):
-        #     dr = 0
-        #     for j in range(len(rewards[i])):
-        #         dr += rewards[i][j] * self.gamma**j
-        #     dis_return.append(dr)
-
-        # print(dis_return)
-
         dr = 0
         for i in range(len(rewards)):
             dr += rewards[i] * self.gamma**i
         dis_return = np.ones(len(rewards)) * dr
+
+
+        # rewards = np.array(rewards)
+        # len_rewards = len(rewards)
+        # discount_factors = self.gamma ** np.arange(len_rewards)
+        # discounted_returns = np.full((len_rewards,), (np.sum(discount_factors * rewards)))
 
         return dis_return
 

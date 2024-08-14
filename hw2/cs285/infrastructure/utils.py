@@ -38,7 +38,7 @@ def sample_trajectory(
 
         # TODO rollout can end due to done, or due to max_length
         steps += 1
-        rollout_done: bool = True if done == True or len(obs)+1 == max_length else False
+        rollout_done: bool = True if done == True or steps > max_length else False
 
         # record result of taking that action
         obs.append(ob)
