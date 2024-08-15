@@ -152,13 +152,15 @@ class PGAgent(nn.Module):
                 # HINT: append a dummy T+1 value for simpler recursive calculation
                 values = np.append(values, [0])
                 advantages = np.zeros(batch_size + 1)
+                next_advantage = 0
 
                 for i in reversed(range(batch_size)):
                     # TODO: recursively compute advantage estimates starting from timestep T.
                     # HINT: use terminals to handle edge cases. terminals[i] is 1 if the state is the last in its
                     # trajectory, and 0 otherwise.
-                    print("asdasdasd")
-                    pass
+                    delta = rewards[i] + (1 - terminals[i]) * self.gamma * values[i+1] - values[i]
+                    advantages[i] = delta + self.gamma * self.gae_lambda * next_advantage * (1 - terminals[i])
+                    next_advantage = advantages[i]
 
                 # remove dummy advantage
                 advantages = advantages[:-1]
