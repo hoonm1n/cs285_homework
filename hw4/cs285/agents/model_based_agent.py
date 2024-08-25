@@ -199,8 +199,8 @@ class ModelBasedAgent(nn.Module):
             # `next_obs` and `acs` 2-dimensional.
             rewards = []
             for i in range(self.ensemble_size):
-                reward, _ = self.env.get_reward(next_obs[i], acs)
-                rewards.append(rewards)
+                reward, _ = self.env.get_reward(obs[i], acs)
+                rewards.append(reward)
             rewards = np.array(rewards)
             assert rewards.shape == (self.ensemble_size, self.mpc_num_action_sequences)
 
@@ -230,13 +230,40 @@ class ModelBasedAgent(nn.Module):
             rewards = self.evaluate_action_sequences(obs, action_sequences)
             assert rewards.shape == (self.mpc_num_action_sequences,)
             best_index = np.argmax(rewards)
+
+            print(action_sequences[best_index][0].shape)
+
             return action_sequences[best_index][0]
         elif self.mpc_strategy == "cem":
             elite_mean, elite_std = None, None
             for i in range(self.cem_num_iters):
                 # TODO(student): implement the CEM algorithm
                 # HINT: you need a special case for i == 0 to initialize
-                # the elite mean and std
-                pass
+                # the elite mean and std    
+                if i == 0:
+                    action_sequences = np.random.uniform(
+                        self.env.action_space.low,
+                        self.env.action_space.high,
+                        size=(self.mpc_num_action_sequences, self.mpc_horizon, self.ac_dim),
+                    )
+                    rewards = self.evaluate_action_sequences(obs, action_sequences)
+                    elite_idx = np.argsort(rewards)[-self.cem_num_elites:]
+                    remain_idx = np.argsort(rewards)[:-self.cem_num_elites]
+                    elite_action_sequences = action_sequences[elite_idx]
+                    remain_action_sequences = action_sequences[remain_idx]
+                    elite_mean = self.cem_alpha * np.mean(elite_action_sequences, axis=0) + (1-self.cem_alpha) * np.mean(remain_action_sequences, axis=0)
+                    elite_std = self.cem_alpha * np.std(elite_action_sequences, axis=0) + (1-self.cem_alpha) * np.std(remain_action_sequences, axis=0)
+                else:
+                    action_sequences = np.random.normal(elite_mean, elite_std, size=(self.mpc_num_action_sequences, self.mpc_horizon, self.ac_dim))
+                    rewards = self.evaluate_action_sequences(obs, action_sequences)
+                    elite_idx = np.argsort(rewards)[-self.cem_num_elites:]
+                    remain_idx = np.argsort(rewards)[:-self.cem_num_elites]
+                    elite_action_sequences = action_sequences[elite_idx]
+                    remain_action_sequences = action_sequences[remain_idx]
+                    elite_mean = self.cem_alpha * np.mean(elite_action_sequences, axis=0) + (1-self.cem_alpha) * elite_mean
+                    elite_std = self.cem_alpha * np.std(elite_action_sequences, axis=0) + (1-self.cem_alpha) * elite_std
+
+            return elite_mean[0]
+
         else:
             raise ValueError(f"Invalid MPC strategy '{self.mpc_strategy}'")
