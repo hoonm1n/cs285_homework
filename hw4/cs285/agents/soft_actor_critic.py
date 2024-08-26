@@ -346,6 +346,15 @@ class SoftActorCritic(nn.Module):
         Update the actor and critic networks.
         """
 
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
+        rewards = ptu.from_numpy(rewards)
+        next_observations = ptu.from_numpy(next_observations)
+        dones = ptu.from_numpy(dones)
+
+
+
+
         critic_infos = []
         # TODO(student): Update the critic for num_critic_upates steps, and add the output stats to critic_infos
         critic_infos = [self.update_critic(observations, actions, rewards, next_observations, dones) for _ in range(self.num_critic_updates)]
