@@ -178,6 +178,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
     
     # Render final heatmap
     fig = visualize(env_pointmass, agent, replay_buffer.observations[:config["total_steps"]])
+    print("dasds")
     fig.suptitle("State coverage")
     filename = os.path.join("exploration_visualization", f"{config['log_name']}.png")
     fig.savefig(filename)
