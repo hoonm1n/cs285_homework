@@ -38,7 +38,11 @@ class IQLAgent(AWACAgent):
         action_dist: Optional[torch.distributions.Categorical] = None,
     ):
         # TODO(student): Compute advantage with IQL
-        return ...
+        qa_values = self.critic(observations)
+        q_values = torch.gather(qa_values, 1, actions.unsqueeze(dim=1)).squeeze()
+        values = self.value_critic(observations)
+        advantages = torch.max(q_values - values, 0)[0]
+        return advantages
 
     def update_q(
         self,
@@ -52,7 +56,11 @@ class IQLAgent(AWACAgent):
         Update Q(s, a)
         """
         # TODO(student): Update Q(s, a) to match targets (based on V)
-        loss = ...
+        qa_values = self.critic(observations)
+        q_values = torch.gather(qa_values, 1, actions.unsqueeze(dim=1)).squeeze()
+        target_values = rewards + torch.logical_not(dones) * self.discount * self.target_value_critic(next_observations)
+
+        loss = self.critic_loss(q_values, target_values)
 
         self.critic_optimizer.zero_grad()
         loss.backward()
@@ -78,7 +86,9 @@ class IQLAgent(AWACAgent):
         Compute the expectile loss for IQL
         """
         # TODO(student): Compute the expectile loss
-        return ...
+        diff = target_qs - vs
+        expectile_loss = torch.where(diff > 0, expectile * diff.pow(2), (1 - expectile) * diff.pow(2)).mean()
+        return expectile_loss
 
     def update_v(
         self,
@@ -89,9 +99,13 @@ class IQLAgent(AWACAgent):
         Update the value network V(s) using targets Q(s, a)
         """
         # TODO(student): Compute target values for V(s)
+        vs = self.value_critic(observations)
+        target_values = self.target_value_critic(observations)
+        target_v = self.target_critic(observations)
+        target_qs = torch.gather(target_v, 1, actions.unsqueeze(dim=1))
 
         # TODO(student): Update V(s) using the loss from the IQL paper
-        loss = ...
+        loss = self.iql_expectile_loss(self.expectile, vs, target_qs)
 
         self.value_critic_optimizer.zero_grad()
         loss.backward()

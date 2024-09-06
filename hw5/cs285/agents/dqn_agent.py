@@ -88,7 +88,7 @@ class DQNAgent(nn.Module):
             assert target_values.shape == (batch_size,), target_values.shape
 
         qa_values = self.critic(obs)
-        q_values = torch.gather(qa_values, 1, action.unsqueeze(dim=1)).squeeze() 
+        q_values = torch.gather(qa_values, 1, action.unsqueeze(dim=1)).squeeze()
         loss = self.critic_loss(q_values, target_values)
 
         return (

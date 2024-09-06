@@ -42,6 +42,7 @@ class CQLAgent(DQNAgent):
 
         # TODO(student): modify the loss to implement CQL
         # Hint: `variables` includes qa_values and q_values from your CQL implementation
-        loss = loss + ...
+
+        loss = loss + self.cql_alpha * (variables["q_values"] - torch.max(variables["qa_values"], dim=1)[0]).mean()
 
         return loss, metrics, variables
